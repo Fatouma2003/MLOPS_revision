@@ -216,6 +216,37 @@ body{
 .explain b{ color:var(--text); }
 .quiz-footer{ display:flex; justify-content:flex-end; margin-top:18px; }
 
+/* bannière de correction, en haut de la page */
+.feedback{
+  display:flex; gap:14px; align-items:flex-start;
+  margin:0 0 20px; padding:16px 18px; border-radius:var(--radius);
+  border:1px solid var(--teal); border-left-width:5px; background:var(--teal-soft);
+  animation: fb-in .22s ease-out;
+}
+.feedback.ko{ border-color:var(--red); background:var(--red-soft); }
+.feedback .fb-icon{
+  flex:none; width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:15px; color:var(--panel); background:var(--teal);
+}
+.feedback.ko .fb-icon{ background:var(--red); }
+.feedback .fb-body{ min-width:0; font-size:14px; line-height:1.5; }
+.feedback .fb-title{ font-weight:700; font-size:15.5px; color:var(--teal); margin:0 0 6px; }
+.feedback.ko .fb-title{ color:var(--red); }
+.feedback .fb-line{ margin:0 0 4px; color:var(--text); }
+.feedback .fb-line .lbl{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted); margin-right:6px;
+}
+.feedback .fb-why{ margin:8px 0 0; color:var(--text); }
+.feedback .fb-why .lbl{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted); display:block; margin-bottom:2px;
+}
+.opt:disabled:not(.correct):not(.wrong){ opacity:.55; }
+@keyframes fb-in{ from{ opacity:0; transform:translateY(-6px);} to{ opacity:1; transform:none;} }
+@media (prefers-reduced-motion: reduce){ .feedback{ animation:none; } }
+
 /* ---------- results ---------- */
 .result-hero{ text-align:center; padding:34px 20px; }
 .result-score{ font-family:'IBM Plex Mono',monospace; font-size:52px; font-weight:700; color:var(--amber); }
@@ -300,6 +331,7 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
   function el(tag, attrs, ...children){
     const e = document.createElement(tag);
     if(attrs) for(const k in attrs){
+      if(attrs[k] === null || attrs[k] === undefined || attrs[k] === false) continue;
       if(k === 'class') e.className = attrs[k];
       else if(k === 'html') e.innerHTML = attrs[k];
       else if(k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
@@ -431,6 +463,35 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
     const pct = Math.round(((qz.idx)/total)*100);
 
     const wrap = el('div', null);
+    const letters = ['A','B','C','D','E','F'];
+    const answered = qz.answers[qz.idx] !== null;
+
+    // Bannière de correction affichée tout en haut, au-dessus de la question
+    if(answered){
+      const picked = qz.answers[qz.idx];
+      const wasRight = picked === cur.correct;
+      const body = el('div', {class:'fb-body'});
+      body.appendChild(el('div', {class:'fb-title'}, wasRight ? 'Bonne réponse !' : 'Mauvaise réponse'));
+      if(!wasRight){
+        body.appendChild(el('p', {class:'fb-line'},
+          el('span', {class:'lbl'}, 'Votre réponse'),
+          `${letters[picked]} — ${cur.options[picked]}`
+        ));
+      }
+      body.appendChild(el('p', {class:'fb-line'},
+        el('span', {class:'lbl'}, wasRight ? 'Réponse' : 'Bonne réponse'),
+        el('b', null, `${letters[cur.correct]} — ${cur.options[cur.correct]}`)
+      ));
+      body.appendChild(el('p', {class:'fb-why'},
+        el('span', {class:'lbl'}, wasRight ? 'Explication' : 'Pourquoi'),
+        cur.explain
+      ));
+      wrap.appendChild(el('div', {class:'feedback ' + (wasRight ? 'ok' : 'ko'), role:'status', 'aria-live':'polite', id:'feedback'},
+        el('div', {class:'fb-icon'}, wasRight ? '✓' : '✕'),
+        body
+      ));
+    }
+
     wrap.appendChild(el('div', {class:'quiz-progress'},
       el('span', null, 'RUN'),
       el('div', {class:'quiz-bar'}, el('div', {style:`width:${pct}%`})),
@@ -440,9 +501,6 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
     const card = el('div', {class:'qcard'});
     card.appendChild(el('div', {class:'qtag mono'}, cur.chapterShort + ' — ' + cur.chapterTitle));
     card.appendChild(el('h2', null, cur.q));
-
-    const letters = ['A','B','C','D','E','F'];
-    const answered = qz.answers[qz.idx] !== null;
 
     cur.options.forEach((opt, i)=>{
       const isCorrect = i === cur.correct;
@@ -456,8 +514,10 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
         class: cls,
         disabled: answered ? 'disabled' : null,
         onclick: ()=>{
+          if(qz.answers[qz.idx] !== null) return;
           qz.answers[qz.idx] = i;
           render();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
         el('span', {class:'optkey'}, letters[i]),
@@ -465,14 +525,6 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
       );
       card.appendChild(btn);
     });
-
-    if(answered){
-      const wasRight = qz.answers[qz.idx] === cur.correct;
-      card.appendChild(el('div', {class:'explain'},
-        el('b', null, wasRight ? 'Correct. ' : 'Pas tout à fait. '),
-        cur.explain
-      ));
-    }
 
     wrap.appendChild(card);
 
@@ -491,6 +543,7 @@ const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux Dat
     if(qz.idx < qz.questions.length - 1){
       qz.idx += 1;
       render();
+      window.scrollTo({ top: 0 });
     } else {
       const correctCount = qz.answers.filter((a,i)=>a===qz.questions[i].correct).length;
       const entry = {
