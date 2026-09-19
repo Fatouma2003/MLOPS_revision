@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLOps & DataOps — Révision</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F5;
+  --panel:#FFFFFF;
+  --panel-2:#EEF1F0;
+  --line:#D8DEDC;
+  --text:#141A18;
+  --muted:#5B6663;
+  --amber:#B8791A;
+  --amber-soft:#F4E3C6;
+  --teal:#127A73;
+  --teal-soft:#D4EDE9;
+  --red:#B23B3B;
+  --red-soft:#F5DADA;
+  --node-off:#DDE3E1;
+  --shadow: 0 1px 2px rgba(20,26,24,.06);
+  --radius: 3px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181A;
+    --panel:#1A2224;
+    --panel-2:#212B2D;
+    --line:#2E3A3C;
+    --text:#E7EEEC;
+    --muted:#9AABA7;
+    --amber:#E3A63E;
+    --amber-soft:#3A2E17;
+    --teal:#4FBDB2;
+    --teal-soft:#173330;
+    --red:#E2716A;
+    --red-soft:#3A1F1E;
+    --node-off:#2B3638;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181A;
+  --panel:#1A2224;
+  --panel-2:#212B2D;
+  --line:#2E3A3C;
+  --text:#E7EEEC;
+  --muted:#9AABA7;
+  --amber:#E3A63E;
+  --amber-soft:#3A2E17;
+  --teal:#4FBDB2;
+  --teal-soft:#173330;
+  --red:#E2716A;
+  --red-soft:#3A1F1E;
+  --node-off:#2B3638;
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  line-height:1.5;
+  min-height:100vh;
+}
+.mono{font-family:'IBM Plex Mono', monospace;}
+
+/* ---------- shell ---------- */
+.shell{max-width:920px; margin:0 auto; padding:28px 20px 80px;}
+.topbar{
+  display:flex; align-items:baseline; justify-content:space-between;
+  margin-bottom:26px; gap:12px; flex-wrap:wrap;
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand-mark{
+  font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600;
+  color:var(--bg); background:var(--amber);
+  padding:3px 7px; border-radius:2px; letter-spacing:.04em;
+}
+.brand h1{font-size:17px; margin:0; font-weight:600;}
+.brand small{display:block; color:var(--muted); font-size:12px; margin-top:2px;}
+.nav-pill{
+  display:flex; gap:6px; background:var(--panel-2); padding:4px; border-radius:20px; border:1px solid var(--line);
+}
+.nav-pill button{
+  font:inherit; font-size:13px; border:none; background:transparent; color:var(--muted);
+  padding:6px 14px; border-radius:16px; cursor:pointer; transition:background .15s, color .15s;
+}
+.nav-pill button.active{background:var(--panel); color:var(--text); box-shadow:var(--shadow);}
+
+/* ---------- pipeline / DAG chapter picker ---------- */
+.pipeline-wrap{position:relative; margin: 10px 0 22px;}
+.pipeline-rail{
+  position:absolute; left:24px; right:24px; top:38px; height:2px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 8px, transparent 8px 14px);
+  z-index:0;
+}
+.pipeline-nodes{
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;
+}
+@media (max-width:640px){ .pipeline-nodes{grid-template-columns:repeat(2,1fr);} }
+
+.node{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 14px 14px; cursor:pointer; text-align:left; position:relative;
+  transition:border-color .15s, transform .1s;
+  display:flex; flex-direction:column; gap:8px; min-height:118px;
+}
+.node:hover{ border-color: var(--amber); }
+.node:active{ transform: translateY(1px); }
+.node .node-top{display:flex; align-items:center; justify-content:space-between;}
+.node .node-id{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:.05em;
+}
+.checkdot{
+  width:17px; height:17px; border-radius:4px; border:1.5px solid var(--node-off); flex:none;
+  display:flex; align-items:center; justify-content:center; transition:all .12s;
+}
+.checkdot svg{width:11px; height:11px; opacity:0; transition:opacity .1s;}
+.node.selected .checkdot{ background:var(--amber); border-color:var(--amber);}
+.node.selected .checkdot svg{opacity:1;}
+.node.selected{ border-color:var(--amber); background: linear-gradient(0deg, var(--amber-soft), var(--amber-soft)), var(--panel); }
+.node h3{ font-size:14px; margin:0; font-weight:600; line-height:1.3;}
+.node p{ font-size:12px; color:var(--muted); margin:0; }
+.node .node-count{
+  margin-top:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+}
+
+/* ---------- options + actions ---------- */
+.options-row{
+  display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin: 6px 0 22px; font-size:13px; color:var(--muted);
+}
+.optchk{display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;}
+.optchk input{accent-color:var(--amber); width:14px; height:14px;}
+
+.actions-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.btn{
+  font:inherit; font-size:13.5px; font-weight:600; border-radius:var(--radius); border:1px solid var(--line);
+  padding:11px 18px; cursor:pointer; background:var(--panel); color:var(--text);
+  display:inline-flex; align-items:center; gap:8px; transition:filter .12s, border-color .12s;
+}
+.btn:hover{ filter:brightness(1.03); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+.btn-primary{ background:var(--amber); color:#1B1200; border-color:var(--amber); }
+:root[data-theme="dark"] .btn-primary, :root:not([data-theme="light"]) .btn-primary{ color:#1B1200; }
+@media (prefers-color-scheme: light){ .btn-primary{ color:#2A1B00; } }
+.btn-ghost{ background:transparent; }
+
+.section-label{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--muted); margin: 30px 0 12px;
+}
+
+/* ---------- fiches (review) ---------- */
+.tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+.tab{
+  font:inherit; font-size:13px; border:1px solid var(--line); background:var(--panel); color:var(--muted);
+  padding:8px 14px; border-radius:20px; cursor:pointer;
+}
+.tab.active{ background:var(--teal-soft); border-color:var(--teal); color:var(--teal); font-weight:600; }
+
+.fiche-tag{
+  font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-bottom:4px;
+}
+.fiche-title{ font-size:19px; font-weight:600; margin: 0 0 18px; }
+
+.card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:640px){ .card-grid{grid-template-columns:1fr;} }
+.fcard{
+  background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--teal);
+  border-radius:var(--radius); padding:14px 16px;
+}
+.fcard h4{ margin:0 0 6px; font-size:13.5px; font-weight:600; }
+.fcard p{ margin:0; font-size:13px; color:var(--muted); }
+
+/* ---------- quiz ---------- */
+.quiz-progress{
+  display:flex; align-items:center; gap:10px; margin-bottom:22px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);
+}
+.quiz-bar{ flex:1; height:5px; background:var(--panel-2); border-radius:3px; overflow:hidden; }
+.quiz-bar > div{ height:100%; background:var(--amber); transition:width .25s; }
+
+.qcard{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px;
+}
+.qcard .qtag{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:10px; }
+.qcard h2{ font-size:17px; line-height:1.4; margin:0 0 20px; font-weight:600; }
+.opt{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  border:1px solid var(--line); background:var(--panel-2); border-radius:var(--radius);
+  padding:13px 15px; margin-bottom:9px; cursor:pointer; font:inherit; font-size:14px; color:var(--text);
+  transition:border-color .12s, background .12s;
+}
+.opt:hover:not(:disabled){ border-color:var(--amber); }
+.opt .optkey{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); border:1px solid var(--line);
+  width:20px; height:20px; border-radius:4px; display:flex; align-items:center; justify-content:center; flex:none;
+}
+.opt.correct{ background:var(--teal-soft); border-color:var(--teal); }
+.opt.correct .optkey{ background:var(--teal); color:var(--panel); border-color:var(--teal); }
+.opt.wrong{ background:var(--red-soft); border-color:var(--red); }
+.opt.wrong .optkey{ background:var(--red); color:var(--panel); border-color:var(--red); }
+.opt:disabled{ cursor:default; }
+
+.explain{
+  margin-top:16px; padding:14px 16px; background:var(--panel-2); border-left:3px solid var(--teal);
+  border-radius:var(--radius); font-size:13.5px; color:var(--muted);
+}
+.explain b{ color:var(--text); }
+.quiz-footer{ display:flex; justify-content:flex-end; margin-top:18px; }
+
+/* ---------- results ---------- */
+.result-hero{ text-align:center; padding:34px 20px; }
+.result-score{ font-family:'IBM Plex Mono',monospace; font-size:52px; font-weight:700; color:var(--amber); }
+.result-sub{ color:var(--muted); font-size:14px; margin-top:6px; }
+.result-list{ margin-top:24px; display:flex; flex-direction:column; gap:8px; }
+.result-row{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--line);
+  border-radius:var(--radius); background:var(--panel); font-size:13px;
+}
+.result-row .badge{
+  width:20px; height:20px; border-radius:4px; flex:none; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:var(--panel);
+}
+.badge.ok{ background:var(--teal); } .badge.ko{ background:var(--red); }
+
+/* ---------- history (run log) ---------- */
+.log-table{ width:100%; border-collapse:collapse; font-size:13px; }
+.log-table th{
+  text-align:left; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--muted); border-bottom:1px solid var(--line); padding:8px 10px; font-weight:500;
+}
+.log-table td{ padding:10px; border-bottom:1px solid var(--line); }
+.log-table tr:last-child td{ border-bottom:none; }
+.run-id{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); }
+.score-pill{
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px;
+  display:inline-block;
+}
+.score-pill.good{ background:var(--teal-soft); color:var(--teal); }
+.score-pill.mid{ background:var(--amber-soft); color:var(--amber); }
+.score-pill.low{ background:var(--red-soft); color:var(--red); }
+.empty-state{ color:var(--muted); font-size:13.5px; padding:30px 10px; text-align:center; border:1px dashed var(--line); border-radius:var(--radius); }
+
+.hint{ font-size:12.5px; color:var(--muted); margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="shell" id="app"></div>
+
+<script>
+const CHAPTERS = [{"id":"ch1","num":"01","short":"CH1","title":"Fondamentaux DataOps & MLOps","tag":"De la donnée brute à l'IA industrielle","fiche":[{"h":"DevOps (Jabbari, 2016)","b":"Combinaison de philosophies culturelles, de pratiques et d'outils qui améliore la capacité d'une organisation à livrer des applications rapidement. Fondations : versionnement, tests, CI/CD, Infrastructure as Code, monitoring, collaboration Dev/Ops."},{"h":"DataOps Manifesto (Bergh, 2017)","b":"Combinaison du développement Agile, de DevOps et du Lean Manufacturing appliquée à la gestion de la donnée. Publié par DataKitchen — 18 principes fondamentaux."},{"h":"DataOps (Atwal, 2019)","b":"Alignement des Personnes (culture, collaboration), des Processus (Agile, Lean) et de la Technologie (automatisation, DevOps) pour améliorer la qualité, la vitesse et la collaboration autour de la donnée."},{"h":"MLOps (Gift & Deza, 2021)","b":"Processus consistant à faire passer un modèle ML d'un laptop à un environnement de production. Couvre tout le cycle : entraînement → validation → déploiement → surveillance → réentraînement."},{"h":"Bon prototype ≠ bon système","b":"Un notebook convaincant ne suffit pas : il faut pouvoir réexécuter la chaîne ailleurs, garantir la disponibilité des données, expliquer quelle version a produit un résultat, maintenir le système et surveiller le modèle."},{"h":"Pourquoi DevOps ne suffit pas","b":"Dans un système data/ML, le comportement dépend aussi des données, des transformations, des features, des versions de modèles et des paramètres d'entraînement — pas seulement du code. D'où DataOps (chaîne de données) et MLOps (cycle de vie du modèle)."},{"h":"Les 7 étapes du DataOps (Bergh)","b":"1) Add data & logic tests 2) Use a version control system 3) Branch and merge 4) Use multiple environments 5) Reuse & containerize 6) Parameterize your processing 7) Work without fear or heroism."},{"h":"MLOps en 5 étapes","b":"Entraîner → Valider → Déployer → Surveiller → Réentraîner. MLOps ne se limite pas au déploiement, il couvre toute la vie du modèle du dev à la production."},{"h":"DevOps vs DataOps vs MLOps","b":"Objet : code applicatif / pipelines de données / modèles ML. Risque clé : régression logicielle / drift de données / drift de modèle. Pratiques : CI-CD & tests / data quality & lineage / experiment tracking & registry."},{"h":"Hiérarchie des besoins (Atwal, 2020)","b":"De la fondation au sommet : Base DevOps → Ingénierie des données → Plateforme ML (feature store, registre) → Automatisation (retraining, CI/CD ML) → Monitoring (drift, alertes) → Gouvernance (explicabilité, conformité, audit)."},{"h":"Cycle de vie en 8 étapes","b":"1) Cadrage du besoin 2) Acquisition/préparation des données 3) Construction des pipelines 4) Expérimentation/entraînement 5) Validation 6) Déploiement 7) Monitoring/observabilité 8) Maintenance et amélioration continue."},{"h":"3 notions centrales : les 5 Q","b":"Reproductibilité (est-ce le même résultat ?), Traçabilité (d'où vient ce résultat ?), Gouvernance (pour qui, avec quelle responsabilité ?). Résumé en 5 questions : Quelle donnée, quel code, quel modèle, quel changement, quel responsable ?"},{"h":"Pipelines et modèles comme produits","b":"Un produit data/ML a des utilisateurs identifiés, un niveau de service, une documentation, un cycle de maintenance, des métriques de qualité et des responsables explicites — pas juste un livrable ponctuel."},{"h":"AIOps vs LLMOps","b":"AIOps : IA appliquée aux opérations IT (détection d'anomalies, corrélation d'alertes). LLMOps : gestion du cycle de vie des applications à base de LLM (prompt versioning, RAG, guardrails, fine-tuning, coûts)."}],"quiz":[{"q":"Selon Bergh (2017), le DataOps Manifesto combine quelles trois disciplines ?","o":["Agile, DevOps et Lean Manufacturing","Scrum, Kanban et Six Sigma","CI/CD, IaC et monitoring","Data Engineering, BI et Cloud Computing"],"c":0,"e":"Le DataOps Manifesto (DataKitchen, 2017) applique Agile + DevOps + Lean Manufacturing à la gestion de la donnée."},{"q":"Pour Atwal (2019), DataOps est l'alignement de quels trois éléments ?","o":["Data, Code, Cloud","Personnes, Processus, Technologie","Vitesse, Coût, Qualité","Ingestion, Transformation, Stockage"],"c":1,"e":"DataOps aligne les Personnes (collaboration), le Processus (Agile/Lean) et la Technologie (automatisation DevOps) pour bâtir la confiance."},{"q":"Quelle définition correspond le mieux à MLOps selon Gift & Deza (2021) ?","o":["Un outil de visualisation des métriques","Le processus de passage d'un modèle du laptop à la production, monitoré et mis à jour automatiquement","Une méthode de nettoyage des données","Un framework de test unitaire pour Python"],"c":1,"e":"MLOps couvre tout le cycle de vie du modèle : entraîner, valider, déployer, surveiller, réentraîner — pas seulement le déploiement."},{"q":"Pourquoi dit-on qu'un « bon prototype » n'est pas forcément un « bon système » ?","o":["Parce qu'un prototype n'a jamais de bons résultats","Parce qu'il ne garantit pas la reproductibilité, la disponibilité des données ni le monitoring en production","Parce que les prototypes sont toujours codés en Java","Parce qu'un système ne nécessite pas de données"],"c":1,"e":"Un prototype peut être précis en local mais échouer à être réexécuté ailleurs, à rester disponible, ou à être surveillé dans le temps."},{"q":"Dans un système data/ML, contrairement à un logiciel classique, le comportement dépend aussi :","o":["Uniquement du code source","Des données d'entrée, des transformations, des features et des versions de modèles","Seulement de la puissance du serveur","Du nombre de développeurs sur le projet"],"c":1,"e":"Le même code avec des données différentes produit un résultat différent : c'est la spécificité des systèmes data/ML."},{"q":"Parmi les 7 étapes DataOps de Bergh, laquelle vise à réduire la dépendance aux interventions manuelles d'urgence ?","o":["Branch and merge","Work without fear or heroism","Use multiple environments","Parameterize your processing"],"c":1,"e":"« Travailler sans peur ni héroïsme » vise à construire des processus durables ne reposant pas sur des sauvetages manuels."},{"q":"Quel est le risque clé principal associé à MLOps dans le tableau comparatif DevOps/DataOps/MLOps ?","o":["Régression logicielle","Drift de données","Drift de modèle","Panne serveur"],"c":2,"e":"DevOps → régression logicielle ; DataOps → drift de données ; MLOps → drift de modèle."},{"q":"Dans la hiérarchie des besoins d'Atwal (2020), quelle couche est la fondation de base ?","o":["Gouvernance","Base DevOps (versionnement, CI/CD, tests)","Monitoring et alertes","Plateforme ML"],"c":1,"e":"La hiérarchie part des fondations DevOps de base, puis ingénierie des données, plateforme ML, automatisation, monitoring, gouvernance."},{"q":"Combien d'étapes comporte le cycle de vie complet des projets data/ML présenté au chapitre 1 ?","o":["5 étapes","6 étapes","8 étapes","10 étapes"],"c":2,"e":"Du cadrage du besoin à la maintenance/amélioration continue, le cycle comporte 8 étapes."},{"q":"La traçabilité répond à quelle question centrale ?","o":["Est-ce le même résultat ?","D'où vient ce résultat ?","Pour qui est ce résultat ?","Combien coûte ce résultat ?"],"c":1,"e":"Reproductibilité = même résultat ; Traçabilité = origine du résultat ; Gouvernance = responsabilité/usage."},{"q":"Considérer un pipeline ou un modèle comme un « produit » implique notamment :","o":["De ne jamais le documenter pour aller plus vite","D'avoir des utilisateurs identifiés, une documentation et des responsables explicites","De le livrer une seule fois sans maintenance","De le garder uniquement en local"],"c":1,"e":"Un produit data/ML possède utilisateurs, niveau de service, documentation, cycle de maintenance, métriques et responsables."},{"q":"LLMOps se distingue d'AIOps car il se concentre sur :","o":["La supervision des réseaux informatiques","La gestion du cycle de vie des applications à base de grands modèles de langage","L'automatisation des tests unitaires classiques","La sécurité physique des data centers"],"c":1,"e":"LLMOps gère prompt versioning, pipelines RAG, guardrails et fine-tuning des applications LLM ; AIOps applique l'IA aux opérations IT."}]},{"id":"ch2","num":"02","short":"CH2","title":"Pipelines Agiles & Orchestration","tag":"Du script artisanal au flux industrialisé","fiche":[{"h":"Artisanal vs industrialisé","b":"Approche artisanale : scripts dispersés, exécution manuelle, dépendance aux individus, faible traçabilité. Pipeline industrialisé : structure modulaire, exécution contrôlée, versions et artefacts suivis, environnement reproductible."},{"h":"Lean Thinking — 5 principes","b":"1) Identifier la valeur (point de vue client) 2) Cartographier le flux (Value Stream Mapping) 3) Créer le flux (éliminer interruptions/goulots) 4) Systèmes Pull (ne produire que ce qui est demandé) 5) Viser la perfection (Kaizen)."},{"h":"Les 7 gaspillages (Muda)","b":"Surproduction, Attente, Transport inutile, Sur-traitement, Défauts, Excès de mouvement, Inventaire — appliqués aux systèmes data/ML (ex : copie de datasets inutile, données bloquées en validation)."},{"h":"Agile appliqué à DataOps","b":"Agile ne signifie pas coder sans structure, mais itérer avec méthode et discipline. Les 4 valeurs du Manifeste Agile (individus, logiciel fonctionnel, collaboration client, réponse au changement) s'appliquent aux pipelines data."},{"h":"DataOps Manifesto — 18 principes","b":"Organisés autour de : Valeur métier (satisfaire le client, accueillir le changement), Collaboration (sport d'équipe, interactions quotidiennes, réduire l'héroïsme), Industrialisation (analytics as code, orchestrer, environnements jetables), Qualité (reproductibilité, monitoring continu, simplicité)."},{"h":"Pipeline de données","b":"Chaîne structurée qui ingère, valide, nettoie, transforme et stocke des données brutes. Étapes : Ingestion → Validation → Nettoyage → Transformation → Stockage. Propriétés : idempotent, traçable, déclenchable, testable."},{"h":"Pipeline ML","b":"Chaîne qui transforme des données préparées en modèle déployable : Feature Engineering → Sélection/Split → Entraînement → Évaluation/Métriques → Artefact Modèle."},{"h":"Data pipeline vs ML pipeline","b":"Objectif : rendre des données exploitables / produire un modèle déployable. Critère de succès : fraîcheur & qualité / précision & robustesse. Outils : dbt, Airflow / MLflow, DVC, Kubeflow."},{"h":"Que versionner et avec quel outil ?","b":"Code → Git. Données → DVC/Delta Lake. Configurations → Git+YAML. Schémas → Great Expectations. Modèles → MLflow Registry. Environnements → Docker/Conda."},{"h":"Git vs DVC","b":"Git trace le code (qui/quand/pourquoi) ; DVC trace la donnée (quoi), via des pointeurs .dvc versionnés dans Git, avec stockage distant (S3/GCS)."},{"h":"Niveaux de maîtrise de l'environnement","b":"Niveau 1 : requirements.txt (dépendances explicites). Niveau 2 : venv/Conda/Poetry (isolation). Niveau 3 : fichier déclaratif (environment.yml). Niveau 4 : conteneurisation Docker (reproductibilité maximale)."},{"h":"Orchestration & DAG","b":"L'orchestration coordonne automatiquement l'exécution des tâches selon des dépendances (DAG = Directed Acyclic Graph), avec retry, logs et alertes. Outils : Airflow, Prefect, Dagster, Metaflow, Kubeflow Pipelines."},{"h":"Continuous Integration (CI)","b":"Intégrer automatiquement les changements de code avec des contrôles à chaque commit/PR : Lint → Tests unitaires → Tests de transformation → Validation config → Build artefact."},{"h":"Modularité, réutilisation, automatisation","b":"Décomposer le pipeline en composants indépendants (SRP), réutiliser des bibliothèques internes, automatiser progressivement (manuel → scripts → pipeline → CI/CD) — ne jamais automatiser avant de comprendre."}],"quiz":[{"q":"Quelle est la principale différence entre une approche artisanale et un pipeline industrialisé ?","o":["L'industrialisé n'utilise jamais Python","L'artisanal repose sur des scripts dispersés et une exécution manuelle non reproductible","L'artisanal est toujours plus rapide","Il n'y a aucune différence pratique"],"c":1,"e":"L'approche artisanale = scripts isolés, dépendance aux individus, faible traçabilité ; le pipeline industrialisé = structure, versions, reproductibilité."},{"q":"Parmi les 5 principes du Lean Thinking, lequel consiste à ne produire que ce qui est réellement demandé ?","o":["Cartographier le flux","Systèmes Pull","Créer le flux","Viser la perfection"],"c":1,"e":"Les systèmes Pull évitent la surproduction en ne déclenchant le traitement qu'à la demande réelle."},{"q":"Lequel des éléments suivants N'EST PAS un des 7 gaspillages (Muda) ?","o":["Surproduction","Automatisation","Attente","Défauts"],"c":1,"e":"Les 7 gaspillages sont : surproduction, attente, transport, sur-traitement, défauts, excès de mouvement, inventaire. L'automatisation n'en fait pas partie."},{"q":"Que signifie « Agile » dans le contexte DataOps selon le chapitre 2 ?","o":["Supprimer toute documentation pour aller plus vite","Itérer avec méthode tout en conservant une discipline et une documentation utile","Changer le pipeline sans aucun contrôle","Travailler uniquement en cascade (waterfall)"],"c":1,"e":"Agile ne veut pas dire absence de structure : c'est itérer avec méthode, documenter utilement et s'adapter au feedback."},{"q":"Selon le DataOps Manifesto, quel principe vise à éviter la dépendance à une ou deux personnes indispensables ?","o":["Orchestrer","Réduire l'héroïsme","Simplicité","Améliorer les temps de cycle"],"c":1,"e":"Le principe « Réduire l'héroïsme » assure que le système est partagé et maîtrisé collectivement, pas dépendant d'individus clés."},{"q":"Quelles sont, dans l'ordre, les étapes typiques d'un pipeline de données ?","o":["Entraînement → Évaluation → Déploiement","Ingestion → Validation → Nettoyage → Transformation → Stockage","Feature Engineering → Split → Training","Packaging → Registry → Monitoring"],"c":1,"e":"Le pipeline de données ingère, valide, nettoie, transforme puis stocke les données."},{"q":"Quel outil est typiquement utilisé pour versionner les DONNÉES (et non le code) ?","o":["Git","DVC","GitHub Actions","Docker"],"c":1,"e":"Git versionne le code ; DVC (Data Version Control) versionne les datasets volumineux via des pointeurs stockés dans Git."},{"q":"Quel est le niveau MAXIMAL de maîtrise de l'environnement selon la classification du chapitre 2 ?","o":["requirements.txt","Environnement virtuel (venv/Conda)","Fichier d'environnement déclaratif (YAML)","Conteneurisation avec Docker"],"c":3,"e":"La conteneurisation encapsule OS, dépendances et code dans une image immuable — c'est le niveau de reproductibilité maximale."},{"q":"Un DAG (Directed Acyclic Graph) sert principalement à :","o":["Stocker les modèles entraînés","Définir l'ordre d'exécution des tâches sans boucle de retour, en permettant la parallélisation","Chiffrer les données sensibles","Remplacer Git pour le versionnement du code"],"c":1,"e":"Un DAG modélise des tâches orientées et sans cycle, essentiel pour définir dépendances et parallélisme dans l'orchestration."},{"q":"Qu'est-ce que l'orchestration apporte par rapport à une simple automatisation par cron ?","o":["Rien de plus, cron suffit toujours","Gestion des dépendances entre tâches, retry automatique, monitoring et alertes","Une exécution plus lente mais plus sûre","La suppression totale du besoin de tests"],"c":1,"e":"Contrairement à cron, un orchestrateur (Airflow, Dagster...) gère les dépendances (DAG), les relances automatiques et la supervision centralisée."},{"q":"Dans un workflow CI typique pour un pipeline data/ML, quel est l'ordre correct ?","o":["Build → Push → Tests → Lint","Push/PR → Lint → Tests unitaires → Tests de transformation → Validation → Build","Déploiement → Tests → Lint","Monitoring → CI → Tests"],"c":1,"e":"Le push/PR déclenche d'abord le linting, puis les tests unitaires, les tests de transformation, la validation de config, puis le build de l'artefact."},{"q":"Le principe « Ne pas automatiser le chaos » signifie :","o":["Il ne faut jamais automatiser un pipeline","Il faut comprendre, simplifier et standardiser avant d'automatiser","L'automatisation doit toujours précéder la compréhension du processus","Automatiser rend inutile toute documentation"],"c":1,"e":"On automatise progressivement (manuel → script → pipeline → CI/CD) uniquement après avoir compris et standardisé le processus."}]},{"id":"ch3","num":"03","short":"CH3","title":"Qualité & Tests de Données","tag":"De la donnée disponible à la donnée de confiance","fiche":[{"h":"Disponible, exploitable, fiable","b":"Donnée disponible : brute, non vérifiée, stockée en vrac. Donnée exploitable : formatée, accessible, manipulable. Donnée fiable : complète, valide, exacte, opportune, cohérente — testée et maîtrisée pour un usage décisionnel."},{"h":"Confiance dans les données","b":"Degré d'assurance qu'un utilisateur peut avoir quant à la fiabilité, la traçabilité et la stabilité d'un actif de données. Elle repose sur : qualité, métadonnées, lineage, tests/validations, gouvernance, monitoring, feedback loops."},{"h":"Qualité des données (fitness for use)","b":"Aptitude d'un jeu de données à satisfaire les usages attendus selon des critères mesurables. Ce n'est pas une notion absolue : elle dépend du cas d'usage, se traduit en règles de validation et doit être testée/surveillée."},{"h":"Les dimensions de qualité (Wang & Strong)","b":"Complétude, Validité, Cohérence, Unicité, Exactitude, Fraîcheur, Intégrité, Traçabilité, Uniformité, Documentation/Métadonnées — chaque dimension correspond à un risque et à un test possible."},{"h":"Exemples de défauts par dimension","b":"Complétude : customer_id manquant. Validité : code pays hors liste. Cohérence : delivery_date < order_date. Unicité : deux lignes avec le même order_id. Fraîcheur : fichier reçu avec 2 jours de retard."},{"h":"Métadonnées","b":"Données qui décrivent d'autres données : nom, définition, type, source, fréquence, propriétaire, règles de qualité, sensibilité. Elles facilitent la compréhension, la réutilisation, la gouvernance et la confiance."},{"h":"Data lineage","b":"Traçabilité du parcours d'une donnée, de la source à l'usage final : Source → Ingestion → Transformation → Produit data → Usage. Répond à : d'où vient la donnée ? quelles transformations ? quels objets en dépendent ?"},{"h":"Gouvernance des données","b":"Ensemble de règles, rôles, responsabilités et mécanismes encadrant la production, l'usage et l'évolution des données : qui valide, quels seuils respecter, qui autorise un changement de schéma."},{"h":"Validation en chaîne de points de contrôle","b":"La validation n'est pas une étape unique mais des contrôles répétés à chaque niveau : Ingestion (Raw) → Transformation → Curated → Features/ML → Production."},{"h":"Kaizen — boucle d'amélioration continue","b":"Définir → Mesurer → Détecter → Analyser → Corriger → Réévaluer → Capitaliser. Petites améliorations progressives et régulières des processus."},{"h":"Data contracts","b":"Engagement formalisé entre producteurs et consommateurs de données sur le schéma, la qualité, la fréquence, les responsabilités et l'évolution des données."},{"h":"Idées clés du chapitre","b":"Une donnée disponible n'est pas nécessairement fiable. La qualité doit être intégrée dès l'ingestion. Les tests doivent être explicites, structurés et automatisés (Atwal insiste sur l'automated testing)."}],"quiz":[{"q":"Quelle est la différence entre une donnée « disponible » et une donnée « fiable » ?","o":["Aucune différence, ce sont des synonymes","Disponible = accessible techniquement ; fiable = testée, complète, valide et adaptée à l'usage","Fiable signifie simplement stockée dans le cloud","Disponible signifie qu'elle a été validée par un data scientist"],"c":1,"e":"Une donnée disponible est brute et non vérifiée ; une donnée fiable est complète, valide, exacte et cohérente pour un usage donné."},{"q":"La qualité des données est définie dans le chapitre comme :","o":["Une notion absolue et universelle","L'aptitude d'un jeu de données à satisfaire les usages attendus (« fitness for use »)","Le volume total de données disponibles","La vitesse d'ingestion des données"],"c":1,"e":"La qualité dépend du contexte et du cas d'usage : ce n'est pas une notion absolue mais un « fitness for use »."},{"q":"Une commande dont la date de livraison est antérieure à la date de commande illustre un défaut de :","o":["Complétude","Cohérence","Fraîcheur","Unicité"],"c":1,"e":"Une contradiction logique entre deux champs (delivery_date < order_date) est un problème de cohérence."},{"q":"Deux lignes partageant le même order_id dans une table de commandes illustrent un défaut de :","o":["Exactitude","Unicité","Fraîcheur","Intégrité"],"c":1,"e":"L'unicité vérifie qu'un identifiant censé être unique ne contient pas de doublons."},{"q":"Que sont les métadonnées ?","o":["Des données dupliquées pour la sauvegarde","Des données qui décrivent d'autres données (structure, source, responsable, règles de qualité)","Un type de base de données NoSQL","Les logs d'erreur d'un pipeline"],"c":1,"e":"Les métadonnées décrivent la donnée elle-même : nom, type, source, fréquence, propriétaire, sensibilité, etc."},{"q":"Le data lineage permet de répondre à quelle question ?","o":["Combien coûte le pipeline ?","D'où vient la donnée et quelles transformations a-t-elle subies ?","Quel est le taux de churn des clients ?","Quel algorithme de ML est le plus performant ?"],"c":1,"e":"Le lineage trace le parcours complet d'une donnée : source, ingestion, transformations, usage final."},{"q":"La gouvernance des données répond notamment à la question :","o":["Quel est le meilleur hyperparamètre pour ce modèle ?","Qui est responsable et qui autorise une évolution de schéma ?","Quelle est la latence moyenne de l'API ?","Quel framework de deep learning utiliser ?"],"c":1,"e":"La gouvernance définit rôles, responsabilités, règles d'usage et mécanismes de validation des changements."},{"q":"Selon le principe de « validation en chaîne », les contrôles qualité doivent être :","o":["Effectués une seule fois à la fin du pipeline","Répétés à chaque niveau (ingestion, transformation, curated, features/ML, production)","Réalisés uniquement par le data engineer principal","Optionnels si le volume de données est faible"],"c":1,"e":"La validation est une chaîne de points de contrôle distribués sur tout le pipeline, pas une étape unique en fin de course."},{"q":"La boucle Kaizen appliquée à la qualité des données suit quel enchaînement ?","o":["Détecter → Ignorer → Réessayer","Définir → Mesurer → Détecter → Analyser → Corriger → Réévaluer → Capitaliser","Corriger → Définir → Supprimer","Analyser → Livrer → Archiver"],"c":1,"e":"Kaizen est une amélioration continue en boucle : définir, mesurer, détecter, analyser, corriger, réévaluer, capitaliser."},{"q":"Un « data contract » formalise :","o":["Le salaire des data engineers","L'engagement entre producteurs et consommateurs sur le schéma, la qualité et l'évolution des données","Le contrat de licence d'un logiciel BI","Un accord de confidentialité RH"],"c":1,"e":"Le data contract fixe les attentes mutuelles entre celui qui produit la donnée et celui qui la consomme."},{"q":"Quelle idée clé du chapitre 3 résume le mieux le message central ?","o":["La qualité des données est une correction a posteriori, après la mise en production","La qualité doit être intégrée dès l'ingestion, comme une exigence d'ingénierie","Il suffit d'avoir beaucoup de données pour garantir la qualité","La qualité des données ne concerne que les data scientists"],"c":1,"e":"Le chapitre conclut que la qualité n'est pas une correction a posteriori mais une exigence d'ingénierie intégrée au pipeline."}]},{"id":"ch4","num":"04","short":"CH4","title":"Reproductibilité MLOps","tag":"Tracking, versionnement et cycle de vie du modèle","fiche":[{"h":"Reproductibilité — définition","b":"Capacité à reconstruire et rejouer un workflow ML dans des conditions définies, à partir d'éléments identifiés, versionnés et documentés, pour obtenir des résultats cohérents et explicables."},{"h":"6 éléments à versionner","b":"Code (structuré, exécutable), Données (identifiées, datées), Dépendances (Python, libs), Configurations (hyperparamètres), Modèles (version, dataset, statut), Résultats (métriques, logs). Le maillon le plus faible détermine la fiabilité globale."},{"h":"Cas « final_model.ipynb »","b":"Un score affiché sans run tracé, sans version du dataset ni des dépendances n'est pas reproductible. Solution : versionnement Git, tracking des expériences, gestion explicite des dépendances, configs externalisées."},{"h":"Suivi/tracking des expériences","b":"Conserver les métadonnées d'un run (code, données, paramètres, métriques, artefacts) pour rendre l'expérience comparable et rejouable. « Tracer une expérience, c'est conserver les preuves de sa construction »."},{"h":"Anatomie d'une fiche de run","b":"run_id + date + auteur, version du code (commit), dataset utilisé, type de modèle, hyperparamètres, métriques (accuracy, F1), artefact généré (model_v12.pkl)."},{"h":"Versionnement des modèles","b":"Identifier, enregistrer et historiser les versions d'un modèle en les reliant à leur contexte de fabrication (code, données, paramètres, métriques, statut)."},{"h":"Cycle de vie du modèle — 5 statuts","b":"Experimental (phase d'essai) → Candidate (comparaison/validation) → Staging (test en environnement contrôlé) → Production (utilisé opérationnellement) → Archived (retiré de l'usage actif)."},{"h":"Le Model Registry","b":"Composant centralisé qui enregistre, centralise, stocke les métriques, gère les statuts et relie le modèle à son historique d'expérimentation. Avant/Après : fichier local → version identifiée ; statut implicite → statut explicite."},{"h":"Critères de promotion & rollback","b":"Promotion : métriques suffisantes, comparaison favorable à une baseline, run traçable, artefacts complets, tests validés. Rollback : identifier la version active, retrouver la version précédente, comparer, restaurer."},{"h":"Packaging","b":"Encapsuler un projet/modèle dans une forme organisée et réutilisable. Continuum : Script → Package Python → Archive d'artefacts → Image Docker → Service exposé par API."},{"h":"Structure de projet reproductible","b":"data/ (raw, processed), configs/, src/ (prepare_data, train, evaluate, predict), models/, reports/, requirements.txt, README.md, Dockerfile. Un point d'entrée explicite remplace les suites d'actions implicites d'un notebook."},{"h":"Pipeline ML reproductible — étapes","b":"Chargement → Validation → Préparation → Split → Entraînement → Évaluation → Logging → Sérialisation → Enregistrement (registry) → Packaging."},{"h":"Artefact / Version / Release / Registry","b":"Artefact : objet produit dans le workflow (model.pkl). Version : état identifié d'un artefact. Release : regroupement cohérent de plusieurs artefacts versionnés. Registry : système qui gère le cycle de vie des versions de modèles."},{"h":"Auditabilité & industrialisation","b":"On n'industrialise pas un résultat ponctuel, on industrialise un processus maîtrisé : rejouable, comparable, transférable, déployable, surveillé, remplaçable."}],"quiz":[{"q":"La reproductibilité en MLOps se définit comme :","o":["La capacité à obtenir toujours le meilleur score possible","La capacité à reconstruire et rejouer un workflow ML à partir d'éléments identifiés et versionnés","Le fait d'utiliser toujours le même algorithme","La vitesse d'exécution d'un pipeline"],"c":1,"e":"Reproduire un modèle, c'est reproduire le processus (code, données, config, environnement) qui l'a produit."},{"q":"Dans le cas pratique « final_model.ipynb », quelle est la cause principale du problème « ça ne marche plus » ?","o":["Le modèle utilisé est trop simple","L'absence de versionnement du code, des données et des dépendances, et de tracking des expériences","Le manque de puissance de calcul","Une erreur de syntaxe Python"],"c":1,"e":"Sans version claire du code/données/dépendances ni tracking, l'expérience ne peut pas être rejouée ni expliquée."},{"q":"Que doit contenir au minimum une fiche de suivi (run) selon le chapitre 4 ?","o":["Uniquement le score final","Identifiant de run, version du code, dataset, hyperparamètres, métriques et artefact","Le nom du data scientist et rien d'autre","La date de naissance du projet"],"c":1,"e":"Une fiche de run documente le contexte complet : run_id, code, dataset, modèle, hyperparamètres, métriques, artefact."},{"q":"Quel est l'ordre correct des statuts dans le cycle de vie d'un modèle ?","o":["Production → Staging → Candidate → Experimental → Archived","Experimental → Candidate → Staging → Production → Archived","Archived → Experimental → Production","Candidate → Production → Experimental → Staging"],"c":1,"e":"Le modèle progresse de la phase d'essai (Experimental) jusqu'au retrait (Archived) en passant par Candidate, Staging et Production."},{"q":"Quel est le rôle principal d'un Model Registry ?","o":["Exécuter les entraînements plus rapidement","Enregistrer, centraliser et gouverner les versions de modèles tout au long de leur cycle de vie","Remplacer complètement Git","Visualiser uniquement les dashboards Grafana"],"c":1,"e":"Le registry centralise versions, métriques, statuts et historique — il gouverne le cycle de vie du modèle, il ne se limite pas à l'entraînement."},{"q":"Parmi les critères de promotion d'un modèle vers la production, lequel N'EST PAS mentionné ?","o":["Métriques suffisantes","Comparaison favorable à une baseline","Le nombre de lignes de code du modèle","Artefacts complets et tests techniques validés"],"c":2,"e":"La promotion repose sur les métriques, la comparaison à une baseline, la traçabilité du run et les artefacts/tests — pas sur le volume de code."},{"q":"Le packaging d'un projet ML suit quel continuum de structuration ?","o":["Docker → Script → API","Script structuré → Package Python → Archive d'artefacts → Image Docker → Service exposé par API","API → Modèle → Notebook","Notebook → Production directe"],"c":1,"e":"Le packaging va du script structuré jusqu'au service exposé par une API, en passant par le package Python et l'image Docker."},{"q":"Pourquoi un point d'entrée explicite (ex : `python train.py --config configs/train.yaml`) est-il important ?","o":["Il remplace le besoin de tests unitaires","Il donne une commande claire, remplaçant les suites d'actions implicites d'un notebook","Il accélère automatiquement l'entraînement","Il n'a aucune utilité pratique"],"c":1,"e":"Un point d'entrée explicite rend le projet exécutable de façon claire et reproductible, contrairement à un notebook où les étapes sont implicites."},{"q":"Quelle est la différence entre un « Artefact » et une « Release » ?","o":["Ce sont des synonymes exacts","Un artefact est un objet produit (ex: model.pkl) ; une release regroupe plusieurs artefacts versionnés prêts à être déployés","Une release est toujours plus petite qu'un artefact","Un artefact ne peut jamais être versionné"],"c":1,"e":"L'artefact matérialise une étape (model.pkl, metrics.json) ; la release regroupe plusieurs artefacts versionnés cohérents."},{"q":"« On n'industrialise pas un résultat ponctuel, on industrialise... »","o":["Un notebook Jupyter","Un processus maîtrisé, rejouable et auditable","Un seul modèle final sans version","Une seule expérience réussie"],"c":1,"e":"L'industrialisation porte sur le processus complet (rejouable, comparable, auditable), pas sur un résultat isolé."},{"q":"Sans versionnement des données, quel risque est directement mentionné dans le chapitre ?","o":["Amélioration automatique du modèle","Impossibilité de rejouer un entraînement et comparaison faussée entre modèles","Réduction du coût de stockage","Aucun risque particulier"],"c":1,"e":"Sans versionnement des datasets, on ne peut pas rejouer l'entraînement ni comparer objectivement deux modèles."}]},{"id":"ch5","num":"05","short":"CH5","title":"CI/CD & Déploiement ML","tag":"Livrer un système ML fiable et reproductible","fiche":[{"h":"Pourquoi industrialiser le déploiement ?","b":"Un déploiement manuel comporte 5 risques : erreurs humaines, faible traçabilité, rollback difficile, faible reproductibilité, lenteur. Un pipeline CI/CD rend le déploiement automatisé, standardisé et traçable."},{"h":"Continuous Integration (CI)","b":"Intégrer automatiquement les changements de code avec des contrôles systématiques (tests, lint, validation) à chaque commit/PR. En ML, la CI vérifie code, données, modèle, service, sécurité et config/infra — sans forcément réentraîner à chaque commit."},{"h":"Continuous Delivery (CD)","b":"Rendre le système déployable à tout moment via une chaîne automatisée produisant un artefact prêt pour la production. Principe : « build once, run many » — une image unique traverse dev, test, staging, production."},{"h":"Packaging vs conteneurisation","b":"Le packaging fige le contenu logique (code, dépendances déclarées). La conteneurisation fige aussi l'environnement d'exécution complet (OS, runtime, bibliothèques système) via Docker."},{"h":"Image, conteneur, runtime","b":"Image : modèle d'exécution (code+dépendances+config) prêt à instancier. Conteneur : instance en cours d'exécution d'une image, isolée. Runtime : moteur qui exécute les conteneurs (Docker Engine)."},{"h":"Bonnes pratiques de conteneurisation","b":"Image légère (limiter les couches), dépendances figées (versions verrouillées), séparation claire des responsabilités, pas de secrets dans l'image, commande de démarrage explicite."},{"h":"Formes de service ML","b":"Batch (traitement périodique, résultats non immédiats), API (réponse synchrone, faible latence), Microservice (modulaire, indépendant), Serverless (coût à l'usage, mais démarrage à froid possible)."},{"h":"Pipeline de déploiement","b":"Commit → CI (contrôle qualité) → Package → Image → Registry → Staging → Tests → Prod (activation du service). La CD orchestre le passage d'un environnement à l'autre."},{"h":"6 types de tests avant mise en production","b":"Smoke tests (le service démarre-t-il ?), Tests d'intégration, Tests fonctionnels d'inférence, Tests de contrat (format entrée/sortie), Tests de performance (charge/latence), Tests de sécurité."},{"h":"Stratégies de déploiement","b":"Recreate (arrêt puis remplacement, risque élevé), Rolling update (remplacement progressif, risque moyen), Blue-green (bascule instantanée, rollback immédiat, risque faible), Canary (exposition progressive, risque faible), Shadow (miroir sans impact, risque très faible)."},{"h":"Microservice ML","b":"Encapsule une capacité de prédiction unique exposée par une interface claire et stable. Avantages : modularité (évolution indépendante), indépendance de déploiement, contrat clair entrées/sorties."}],"quiz":[{"q":"Parmi les risques d'un déploiement manuel, lequel N'EST PAS cité dans le chapitre 5 ?","o":["Erreurs humaines","Faible traçabilité","Amélioration automatique de la précision du modèle","Rollback difficile"],"c":2,"e":"Les risques cités sont : erreurs humaines, faible traçabilité, rollback difficile, faible reproductibilité, lenteur — pas une amélioration de précision."},{"q":"En contexte ML, que vérifie la CI, au-delà du code ?","o":["Uniquement la vitesse du CPU","Les données (schéma, colonnes), le modèle (version, compatibilité) et le service (endpoint, contrat)","Le salaire des développeurs","La météo du datacenter"],"c":1,"e":"La CI en ML élargit les contrôles classiques (lint, tests) aux données, au modèle et au service exposé."},{"q":"Le principe « build once, run many » signifie :","o":["Il faut construire une image différente pour chaque environnement","Une image unique traverse développement, test, staging et production sans être reconstruite","Chaque déploiement nécessite un nouveau code source","Le modèle doit être réentraîné à chaque environnement"],"c":1,"e":"La CD construit une seule image qui est ensuite promue d'environnement en environnement, garantissant la cohérence."},{"q":"Quelle est la différence entre packaging et conteneurisation ?","o":["Ce sont deux termes strictement identiques","Le packaging fige le contenu logique ; la conteneurisation fige aussi tout l'environnement d'exécution","La conteneurisation ne concerne que les données","Le packaging est plus complet que Docker"],"c":1,"e":"Le packaging structure code/dépendances déclarées ; la conteneurisation va plus loin en figeant OS, runtime et bibliothèques système."},{"q":"Dans la terminologie Docker, qu'est-ce qu'un « runtime » ?","o":["Le code source du modèle","Le moteur qui exécute les conteneurs à partir des images (ex: Docker Engine)","Un type de test unitaire","La durée d'entraînement du modèle"],"c":1,"e":"Le runtime est le moteur (ex: Docker Engine) qui exécute les conteneurs construits à partir des images."},{"q":"Quelle bonne pratique de conteneurisation est explicitement recommandée ?","o":["Graver les secrets et clés directement dans l'image","Ne jamais figer les versions des dépendances","Ne pas mettre de secrets dans l'image ; les injecter à l'exécution","Empiler plusieurs responsabilités dans un même conteneur"],"c":2,"e":"Les identifiants et clés doivent être injectés à l'exécution, jamais gravés dans l'image, pour des raisons de sécurité."},{"q":"Quelle forme de service ML convient le mieux à une réponse synchrone à faible latence pour une requête unique ?","o":["Batch","API","Traitement par lot nocturne","Aucune de ces réponses"],"c":1,"e":"L'API répond de façon synchrone avec une faible latence à des requêtes individuelles, contrairement au batch qui traite de gros volumes périodiquement."},{"q":"Qu'est-ce qu'un « smoke test » dans le pipeline de déploiement ?","o":["Un test de performance sous forte charge","Un test qui vérifie que le service démarre et répond de façon minimale","Un test qui vérifie la sécurité contre les attaques","Un test qui mesure le taux de churn"],"c":1,"e":"Le smoke test vérifie simplement que le service démarre et répond, avant des tests plus poussés."},{"q":"Quelle stratégie de déploiement consiste à tester une nouvelle version en miroir, sans impact sur l'utilisateur ?","o":["Recreate","Rolling update","Shadow","Blue-green"],"c":2,"e":"Le déploiement Shadow envoie le trafic à la nouvelle version en parallèle, sans que le résultat n'impacte l'utilisateur — risque très faible."},{"q":"Quelle stratégie de déploiement présente le risque le PLUS ÉLEVÉ selon le tableau du chapitre 5 ?","o":["Canary","Blue-green","Recreate","Shadow"],"c":2,"e":"Recreate (arrêt puis remplacement complet) implique une interruption de service et un risque élevé, contrairement à Blue-green ou Canary."},{"q":"Un microservice ML est caractérisé par :","o":["Une dépendance forte à tous les autres composants du système","Une capacité de prédiction unique exposée par une interface claire, déployable indépendamment","L'obligation d'être redéployé avec tout le système à chaque mise à jour","L'absence totale de contrat d'entrée/sortie"],"c":1,"e":"Le microservice ML est modulaire et indépendant : sa mise à jour n'impacte pas le reste du système grâce à un contrat clair."}]},{"id":"ch6","num":"06","short":"CH6","title":"Monitoring & Gouvernance","tag":"Observer, diagnostiquer et gouverner en production","fiche":[{"h":"Monitoring vs Observabilité","b":"Monitoring : « Est-ce que quelque chose ne va pas ? » — indicateurs prédéfinis, métriques/seuils/alertes. Observabilité : « Pourquoi cela ne va pas ? » — exploration/diagnostic via logs, traces, lineage, événements."},{"h":"5 signaux d'observabilité","b":"Logs (événements structurés), Métriques (mesures dans le temps), Traces (parcours de requête), Alertes (signaux actionnables), Lineage (origine & transformations). « Les logs expliquent, les métriques indiquent, les traces localisent »."},{"h":"Familles de métriques","b":"Système (CPU, mémoire), Application (requêtes, erreurs, latence), Pipeline data (volume, fraîcheur, échecs), Qualité des données (nulls, doublons), Modèle ML (performance, drift), Business (adoption, valeur), Coût (par run, par prédiction)."},{"h":"Une alerte utile","b":"Doit être actionnable, priorisée et contextualisée, reliée à une procédure claire. Exemple : « taux d'erreur API > 5% pendant 10 minutes »."},{"h":"Monitoring d'un pipeline de données — 7 dimensions","b":"Disponibilité (taux de succès), Fraîcheur (âge dernière donnée), Volume (nombre de lignes), Schéma (colonnes modifiées), Qualité (taux de nulls), Performance (durée), Coût (coût par run)."},{"h":"Cas : pipeline en succès, données incomplètes","b":"Un pipeline peut être techniquement en succès (statut: success) tout en livrant des données fonctionnellement incomplètes (12 000 lignes au lieu de 100 000). D'où la nécessité d'alertes sur le volume, pas seulement sur le statut."},{"h":"Model monitoring — éléments surveillés","b":"Données d'entrée (ressemblent-elles aux données d'entraînement ?), Prédictions (distribution), Performance (précision avec labels réels), Segments (fonctionne pour tous les groupes ?), Latence, Robustesse, Version du modèle."},{"h":"Vérité terrain différée","b":"Churn : label dispo après plusieurs semaines. Crédit : après plusieurs mois. Maintenance : au moment de l'incident. Recommandation : après comportement utilisateur. Quand les labels tardent, on surveille distributions, confiance et drift."},{"h":"3 types de dérive (drift)","b":"Data drift : changement de distribution des variables d'entrée (nouveaux profils clients). Prediction drift : changement de distribution des sorties du modèle. Concept drift : la relation entre X et y change (nouvelles stratégies de fraude)."},{"h":"Boucle Kaizen de feedback","b":"Détecter (drift, baisse de clic) → Analyser (segments) → Corriger (enrichir les données, réentraîner) → Redéployer → Mesurer → Capitaliser."},{"h":"KPI d'un produit data/ML vivant","b":"Santé technique (disponibilité, latence), Santé data (fraîcheur, complétude), Santé modèle (performance, drift), Santé produit (adoption, satisfaction), Santé économique (coût par prédiction)."},{"h":"Construire la confiance (Atwal)","b":"La confiance repose sur : Qualité, Métadonnées, Lineage, Sécurité, Privacy, Gouvernance, Monitoring, Feedback. Elle ne se décrète pas, elle se construit par des mécanismes techniques et organisationnels."},{"h":"Gouvernance des données et des modèles","b":"Données : ownership, droits d'accès, classification, conformité, audit. Modèles : versions, datasets d'entraînement, métriques d'évaluation, validation avant production, risques de biais, retrait/remplacement."},{"h":"Sécurité & privacy","b":"Enjeux : confidentialité, intégrité, disponibilité, protection des données personnelles, auditabilité. Contrôles : gestion des rôles, authentification forte, chiffrement, masquage/pseudonymisation, logs d'accès."},{"h":"Outils du chapitre","b":"Prometheus (métriques, alerting), Grafana (dashboards), Evidently (data drift, model monitoring), OpenLineage (traçabilité des datasets), Azure ML (endpoints managés), DataKitchen (qualité continue)."},{"h":"LLMOps — objets spécifiques","b":"Prompts, réponses générées, contexte RAG, documents récupérés, hallucinations, sécurité (prompt injection), coût en tokens, latence, feedback utilisateur. Le monitoring RAG suit : retrieval, génération, coût, sécurité, qualité, performance."}],"quiz":[{"q":"Quelle est la question centrale du MONITORING (par opposition à l'observabilité) ?","o":["Pourquoi cela ne va pas ?","Est-ce que quelque chose ne va pas ?","Qui est responsable de l'erreur ?","Combien coûte l'incident ?"],"c":1,"e":"Le monitoring détecte via des indicateurs prédéfinis (« quelque chose ne va pas ? ») ; l'observabilité explique pourquoi via l'exploration."},{"q":"Parmi les 5 signaux fondamentaux d'observabilité, lequel permet de localiser un problème dans le parcours d'une requête ?","o":["Les logs","Les métriques","Les traces","Le lineage"],"c":2,"e":"« Les traces localisent » : elles suivent le parcours complet d'une requête à travers le système."},{"q":"Un pipeline avec le statut « success » mais qui n'ingère que 12% du volume habituel illustre :","o":["Un exemple de data drift","Le fait qu'un succès technique peut cacher un problème fonctionnel (données incomplètes)","Un problème de sécurité","Un exemple de concept drift"],"c":1,"e":"Le job réussit techniquement, mais les données sont fonctionnellement incomplètes — d'où la nécessité d'alertes sur le volume, pas seulement sur le statut."},{"q":"Quel type de drift correspond à un changement dans la RELATION entre les variables d'entrée et la variable cible (ex: nouvelles stratégies de fraude) ?","o":["Data drift","Prediction drift","Concept drift","Feature drift"],"c":2,"e":"Le concept drift apparaît quand la même donnée n'a plus la même signification, c'est-à-dire quand la relation X→y change."},{"q":"Le data drift désigne :","o":["Un changement dans la distribution statistique des données d'entrée","Un changement dans la distribution des prédictions du modèle","Un changement dans le code source du pipeline","Une baisse du budget cloud"],"c":0,"e":"Le data drift concerne les variables d'entrée (ex: nouveaux profils clients), à distinguer du prediction drift (sorties) et du concept drift (relation X-y)."},{"q":"Pour un modèle de scoring crédit, la vérité terrain (label réel) est généralement disponible :","o":["Immédiatement après la prédiction","Après plusieurs mois (défauts de paiement retardés)","Jamais","En quelques secondes via l'API"],"c":1,"e":"Pour le crédit, les défauts de paiement apparaissent après plusieurs mois : on surveille alors des signaux indirects en attendant."},{"q":"Quelles sont les 5 dimensions de la boucle Kaizen appliquée au feedback loop ML ?","o":["Vendre, Acheter, Stocker, Livrer, Facturer","Détecter, Analyser, Corriger, Redéployer, Capitaliser","Coder, Tester, Documenter, Archiver, Supprimer","Ingest, Transform, Load, Query, Delete"],"c":1,"e":"Le feedback loop transforme les signaux de production en amélioration : détecter, analyser, corriger, redéployer, capitaliser."},{"q":"Parmi les dimensions de KPI d'un produit data/ML « vivant », laquelle couvre l'adoption et la satisfaction ?","o":["Santé technique","Santé produit","Santé économique","Santé data"],"c":1,"e":"La santé produit mesure l'adoption, la satisfaction et l'usage réel du système par les utilisateurs."},{"q":"Selon Atwal, la confiance dans les données repose notamment sur :","o":["Uniquement la taille du dataset","Qualité, métadonnées, lineage, sécurité, gouvernance et monitoring","Le prix payé pour les données","La rapidité du serveur de stockage"],"c":1,"e":"La confiance se construit par des mécanismes techniques et organisationnels : qualité, métadonnées, lineage, sécurité, privacy, gouvernance, monitoring, feedback."},{"q":"Quel outil du chapitre 6 est spécifiquement dédié à la détection de data drift et au model monitoring ?","o":["Grafana","Prometheus","Evidently","OpenLineage"],"c":2,"e":"Evidently est mentionné pour le data drift, la qualité et les rapports de model monitoring ; Grafana sert aux dashboards, Prometheus à la collecte de métriques, OpenLineage à la traçabilité."},{"q":"En LLMOps, quel risque est spécifiquement lié aux systèmes génératifs (non présent en ML classique) ?","o":["Le data drift classique","Le prompt injection et les hallucinations","Le manque de CPU","L'absence de Git"],"c":1,"e":"Les systèmes LLM/RAG introduisent des risques spécifiques : prompt injection, hallucinations, fuite d'informations sensibles."},{"q":"Dans le monitoring d'un système RAG, quelle dimension concerne le nombre de documents et le score de similarité ?","o":["Génération","Retrieval","Coût","Sécurité"],"c":1,"e":"La dimension Retrieval surveille le nombre de documents récupérés, le score de similarité et les requêtes sans source."}]}];
+</script>
+<script>
+(function(){
+  "use strict";
+
+  const app = document.getElementById('app');
+  const HIST_KEY = 'mlops_quiz_history_v1';
+
+  let state = {
+    view: 'home',            // home | quiz | results | review
+    selected: {},            // chapter id -> bool
+    shuffleQ: true,
+    shuffleA: true,
+    reviewTab: CHAPTERS[0].id,
+    quiz: null                // { questions:[{...q, chapterShort}], idx, answers:[], answered:false, selectedOpt:null }
+  };
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  function loadHistory(){
+    try{
+      const raw = localStorage.getItem(HIST_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveHistoryEntry(entry){
+    try{
+      const hist = loadHistory();
+      hist.unshift(entry);
+      localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0,50)));
+    }catch(e){ /* storage unavailable, ignore */ }
+  }
+
+  function el(tag, attrs, ...children){
+    const e = document.createElement(tag);
+    if(attrs) for(const k in attrs){
+      if(k === 'class') e.className = attrs[k];
+      else if(k === 'html') e.innerHTML = attrs[k];
+      else if(k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    children.flat().forEach(c=>{
+      if(c === null || c === undefined) return;
+      if(typeof c === 'string') e.appendChild(document.createTextNode(c));
+      else e.appendChild(c);
+    });
+    return e;
+  }
+
+  function render(){
+    app.innerHTML = '';
+    app.appendChild(topbar());
+    if(state.view === 'home') app.appendChild(viewHome());
+    if(state.view === 'quiz') app.appendChild(viewQuiz());
+    if(state.view === 'results') app.appendChild(viewResults());
+    if(state.view === 'review') app.appendChild(viewReview());
+    if(state.view === 'history') app.appendChild(viewHistory());
+  }
+
+  function topbar(){
+    const nav = el('div', {class:'nav-pill'},
+      navBtn('home','Quiz'),
+      navBtn('review','Fiches'),
+      navBtn('history','Historique')
+    );
+    return el('div', {class:'topbar'},
+      el('div', {class:'brand'},
+        el('span', {class:'brand-mark'}, 'ML/DO'),
+        el('div', null,
+          el('h1', null, 'MLOps & DataOps'),
+          el('small', null, 'Révision — Pr. Ait Daoud, 2025/2026')
+        )
+      ),
+      nav
+    );
+  }
+
+  function navBtn(view, label){
+    const b = el('button', {
+      class: state.view===view || (view==='home' && state.view==='quiz') || (view==='home' && state.view==='results') ? 'active' : '',
+      onclick: ()=>{ state.view = view; render(); }
+    }, label);
+    return b;
+  }
+
+  // ---------------- HOME ----------------
+  function viewHome(){
+    const wrap = el('div', null);
+
+    wrap.appendChild(el('div', {class:'section-label'}, 'Choisir les chapitres'));
+
+    const pw = el('div', {class:'pipeline-wrap'});
+    pw.appendChild(el('div', {class:'pipeline-rail'}));
+    const grid = el('div', {class:'pipeline-nodes'});
+    CHAPTERS.forEach(ch=>{
+      const isSel = !!state.selected[ch.id];
+      const node = el('button', {
+        class: 'node' + (isSel?' selected':''),
+        type:'button',
+        onclick: ()=>{ state.selected[ch.id] = !state.selected[ch.id]; render(); }
+      },
+        el('div', {class:'node-top'},
+          el('span', {class:'node-id mono'}, ch.short),
+          el('span', {class:'checkdot'}, el('span', {html:'<svg viewBox="0 0 12 12" fill="none"><path d="M2 6.2l2.7 2.7L10 3.4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'}))
+        ),
+        el('h3', null, ch.title),
+        el('p', null, ch.tag),
+        el('div', {class:'node-count'}, ch.quiz.length + ' questions')
+      );
+      grid.appendChild(node);
+    });
+    pw.appendChild(grid);
+    wrap.appendChild(pw);
+
+    wrap.appendChild(el('div', {class:'options-row'},
+      el('label', {class:'optchk'},
+        el('input', {type:'checkbox', checked: state.shuffleQ ? 'checked': null, onchange:(e)=>{state.shuffleQ = e.target.checked;}}),
+        'Mélanger les questions'
+      ),
+      el('label', {class:'optchk'},
+        el('input', {type:'checkbox', checked: state.shuffleA ? 'checked': null, onchange:(e)=>{state.shuffleA = e.target.checked;}}),
+        'Mélanger les réponses'
+      )
+    ));
+
+    const anySelected = Object.values(state.selected).some(Boolean);
+
+    wrap.appendChild(el('div', {class:'actions-row'},
+      el('button', {class:'btn btn-primary', disabled: anySelected? null : 'disabled', onclick: startQuiz}, '▶ Commencer le quiz'),
+      el('button', {class:'btn', onclick: ()=>{ state.view='review'; render(); }}, '📖 Réviser'),
+      el('button', {class:'btn btn-ghost', onclick: ()=>{ state.view='history'; render(); }}, 'Historique')
+    ));
+    if(!anySelected) wrap.appendChild(el('div', {class:'hint'}, 'Sélectionnez au moins un chapitre pour lancer un quiz.'));
+
+    return wrap;
+  }
+
+  function startQuiz(){
+    const chosen = CHAPTERS.filter(c=>state.selected[c.id]);
+    if(chosen.length === 0) return;
+    let questions = [];
+    chosen.forEach(ch=>{
+      ch.quiz.forEach(q=>{
+        questions.push({ chapterShort: ch.short, chapterTitle: ch.title, q: q.q, options: q.o, correct: q.c, explain: q.e });
+      });
+    });
+    if(state.shuffleQ) questions = shuffle(questions);
+    if(state.shuffleA){
+      questions = questions.map(q=>{
+        const order = shuffle(q.options.map((_,i)=>i));
+        const newCorrect = order.indexOf(q.correct);
+        return { ...q, options: order.map(i=>q.options[i]), correct: newCorrect };
+      });
+    }
+    state.quiz = { chapters: chosen.map(c=>c.short), questions, idx:0, answers:new Array(questions.length).fill(null), answeredCurrent:false };
+    state.view = 'quiz';
+    render();
+  }
+
+  // ---------------- QUIZ ----------------
+  function viewQuiz(){
+    const qz = state.quiz;
+    const total = qz.questions.length;
+    const cur = qz.questions[qz.idx];
+    const pct = Math.round(((qz.idx)/total)*100);
+
+    const wrap = el('div', null);
+    wrap.appendChild(el('div', {class:'quiz-progress'},
+      el('span', null, 'RUN'),
+      el('div', {class:'quiz-bar'}, el('div', {style:`width:${pct}%`})),
+      el('span', null, `${qz.idx+1} / ${total}`)
+    ));
+
+    const card = el('div', {class:'qcard'});
+    card.appendChild(el('div', {class:'qtag mono'}, cur.chapterShort + ' — ' + cur.chapterTitle));
+    card.appendChild(el('h2', null, cur.q));
+
+    const letters = ['A','B','C','D','E','F'];
+    const answered = qz.answers[qz.idx] !== null;
+
+    cur.options.forEach((opt, i)=>{
+      const isCorrect = i === cur.correct;
+      const isPicked = qz.answers[qz.idx] === i;
+      let cls = 'opt';
+      if(answered){
+        if(isCorrect) cls += ' correct';
+        else if(isPicked && !isCorrect) cls += ' wrong';
+      }
+      const btn = el('button', {
+        class: cls,
+        disabled: answered ? 'disabled' : null,
+        onclick: ()=>{
+          qz.answers[qz.idx] = i;
+          render();
+        }
+      },
+        el('span', {class:'optkey'}, letters[i]),
+        el('span', null, opt)
+      );
+      card.appendChild(btn);
+    });
+
+    if(answered){
+      const wasRight = qz.answers[qz.idx] === cur.correct;
+      card.appendChild(el('div', {class:'explain'},
+        el('b', null, wasRight ? 'Correct. ' : 'Pas tout à fait. '),
+        cur.explain
+      ));
+    }
+
+    wrap.appendChild(card);
+
+    const footer = el('div', {class:'quiz-footer'});
+    if(answered){
+      footer.appendChild(el('button', {class:'btn btn-primary', onclick: nextQuestion},
+        qz.idx === total-1 ? 'Voir les résultats' : 'Question suivante →'
+      ));
+    }
+    wrap.appendChild(footer);
+    return wrap;
+  }
+
+  function nextQuestion(){
+    const qz = state.quiz;
+    if(qz.idx < qz.questions.length - 1){
+      qz.idx += 1;
+      render();
+    } else {
+      const correctCount = qz.answers.filter((a,i)=>a===qz.questions[i].correct).length;
+      const entry = {
+        date: new Date().toISOString(),
+        chapters: qz.chapters,
+        score: correctCount,
+        total: qz.questions.length
+      };
+      saveHistoryEntry(entry);
+      state.view = 'results';
+      render();
+    }
+  }
+
+  // ---------------- RESULTS ----------------
+  function viewResults(){
+    const qz = state.quiz;
+    const total = qz.questions.length;
+    const correct = qz.answers.filter((a,i)=>a===qz.questions[i].correct).length;
+    const pct = Math.round((correct/total)*100);
+
+    const wrap = el('div', null);
+    wrap.appendChild(el('div', {class:'qcard result-hero'},
+      el('div', {class:'result-score mono'}, `${correct}/${total}`),
+      el('div', {class:'result-sub'}, `${pct}% de bonnes réponses — chapitres : ${qz.chapters.join(', ')}`)
+    ));
+
+    const list = el('div', {class:'result-list'});
+    qz.questions.forEach((q,i)=>{
+      const ok = qz.answers[i] === q.correct;
+      list.appendChild(el('div', {class:'result-row'},
+        el('span', {class:'badge ' + (ok?'ok':'ko')}, ok?'✓':'✕'),
+        el('div', null,
+          el('div', null, q.q),
+          !ok ? el('div', {class:'hint'}, 'Réponse correcte : ' + q.options[q.correct]) : null
+        )
+      ));
+    });
+    wrap.appendChild(el('div', {class:'section-label'}, 'Détail des réponses'));
+    wrap.appendChild(list);
+
+    wrap.appendChild(el('div', {class:'actions-row', style:'margin-top:22px;'},
+      el('button', {class:'btn btn-primary', onclick: ()=>{ state.view='home'; render(); }}, 'Nouveau quiz'),
+      el('button', {class:'btn', onclick: ()=>{ state.view='review'; render(); }}, 'Réviser les fiches')
+    ));
+
+    return wrap;
+  }
+
+  // ---------------- REVIEW (fiches) ----------------
+  function viewReview(){
+    const wrap = el('div', null);
+    const tabs = el('div', {class:'tabs'});
+    CHAPTERS.forEach(ch=>{
+      tabs.appendChild(el('button', {
+        class: 'tab' + (state.reviewTab===ch.id ? ' active':''),
+        onclick: ()=>{ state.reviewTab = ch.id; render(); }
+      }, ch.short + ' — ' + ch.title.split(' ').slice(0,3).join(' ')));
+    });
+    wrap.appendChild(tabs);
+
+    const ch = CHAPTERS.find(c=>c.id===state.reviewTab);
+    wrap.appendChild(el('div', {class:'fiche-tag mono'}, ch.short));
+    wrap.appendChild(el('div', {class:'fiche-title'}, ch.title));
+
+    const grid = el('div', {class:'card-grid'});
+    ch.fiche.forEach(f=>{
+      grid.appendChild(el('div', {class:'fcard'},
+        el('h4', null, f.h),
+        el('p', null, f.b)
+      ));
+    });
+    wrap.appendChild(grid);
+
+    wrap.appendChild(el('div', {class:'actions-row', style:'margin-top:22px;'},
+      el('button', {class:'btn btn-primary', onclick: ()=>{
+        state.selected = {}; state.selected[ch.id] = true; startQuiz();
+      }}, `▶ Quiz — ${ch.short}`)
+    ));
+
+    return wrap;
+  }
+
+  // ---------------- HISTORY ----------------
+  function viewHistory(){
+    const wrap = el('div', null);
+    wrap.appendChild(el('div', {class:'section-label'}, 'Historique des runs'));
+    const hist = loadHistory();
+    if(hist.length === 0){
+      wrap.appendChild(el('div', {class:'empty-state'}, 'Aucun quiz enregistré pour l\'instant. Lance ton premier run pour voir ton historique ici.'));
+      return wrap;
+    }
+    const table = el('table', {class:'log-table'});
+    table.appendChild(el('tr', null,
+      el('th', null, 'Run'), el('th', null, 'Chapitres'), el('th', null, 'Score'), el('th', null, 'Date')
+    ));
+    hist.forEach((h,i)=>{
+      const pct = Math.round((h.score/h.total)*100);
+      const cls = pct>=80?'good':(pct>=50?'mid':'low');
+      const d = new Date(h.date);
+      const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'}) + ' ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      table.appendChild(el('tr', null,
+        el('td', null, el('span', {class:'run-id'}, 'run_' + String(hist.length-i).padStart(3,'0'))),
+        el('td', null, h.chapters.join(', ')),
+        el('td', null, el('span', {class:'score-pill '+cls}, `${h.score}/${h.total} · ${pct}%`)),
+        el('td', null, dateStr)
+      ));
+    });
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  render();
+})();
+
+</script>
+</body>
+</html>
